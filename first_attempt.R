@@ -135,7 +135,7 @@ library(condMVNorm)
 for (variable in 1:ncol(test.data)) {
   
   # run mclust best BIC
-  model.mclustBIC <- mclustBIC(test.data, G = 1:9)
+  model.mclustBIC <- mclustBIC(test.data, G = 1)
   
   # run best BIC model
   model.mclust <- Mclust(test.data, x = model.mclustBIC)
