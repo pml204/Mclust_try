@@ -152,7 +152,7 @@ for (cycle in 1: imputations) {
     for (variable in 1:ncol(test.data)) {
       
       # run mclust best BIC
-      model.mclustBIC <- mclustBIC(test.data, G = 1:60)
+      model.mclustBIC <- mclustBIC(test.data, G = 1:20)
       
       # run best BIC model
       model.mclust <- Mclust(test.data, x = model.mclustBIC)
