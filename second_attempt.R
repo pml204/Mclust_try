@@ -1,5 +1,4 @@
 
-
 #######################################################
 #######################################################
 #######################################################
@@ -128,10 +127,10 @@ for (variable in 1:ncol(test.data)) {
 ##
 ## Iterations
 
-imputations = 10
+imputations = 4
 ##
 ## Numbers of Iterations for the creation of one dataset
-
+maxit = 3
 
 ##
 ##  model has one cycle around variables, one iteration changing the "missing" values
@@ -147,13 +146,13 @@ for (cycle in 1: imputations) {
   
   imputing <- test.data
   
-  for (iteration in 1:10) {
+  for (iteration in 1:maxit) {
     
     
     for (variable in 1:ncol(test.data)) {
       
       # run mclust best BIC
-      model.mclustBIC <- mclustBIC(test.data, G = 1:30)
+      model.mclustBIC <- mclustBIC(test.data, G = 1:60)
       
       # run best BIC model
       model.mclust <- Mclust(test.data, x = model.mclustBIC)
@@ -186,7 +185,7 @@ for (cycle in 1: imputations) {
         
         # conditional mean/variance 
         test <- condMVN(mean=mu.it, sigma=var, dependent=dependent, given=given,
-                X.given=x.given)
+                X.given=x.given, check.sigma = FALSE)
         
         imputing[row,variable] <- rnorm(1,test$condMean, test$condVar)
       }
@@ -207,7 +206,7 @@ for (cycle in 1: imputations) {
 ###########################################################################
 
 # True/False location
-data.missing <- matrix( rep( t(test.data.missing), imputations+1), ncol = ncol(data.missing), byrow = TRUE)
+data.missing <- matrix( rep( t(test.data.missing), imputations+1), ncol = ncol(test.data.missing), byrow = TRUE)
 
 
 imp1[,1:3][!data.missing] <- NA
@@ -370,5 +369,6 @@ ggplot(Box.all, aes(x=Imputation,y=Predicted)) +
 
 
 ggsave("box_y.png", height = 20, width = 27, units = "cm")
+
 
 
