@@ -1,4 +1,4 @@
-mclust_version1 <- function(dataset, imputations = 10, maxit = 5, G = 1:9, save_parameter = FALSE) {
+mclust_version1 <- function(dataset, imputations = 10, maxit = 5, G = 1:9, save_parameter = TRUE) {
   
   require(mclust)
   require(condMVNorm)
