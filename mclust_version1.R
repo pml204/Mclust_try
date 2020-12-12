@@ -1,31 +1,31 @@
-mclust_version1 <- function(dataset, imputations = 10, maxit = 5, G = 1:9, save_parameter = TRUE) {
-  
+mclust_version1 <- function(dataset, imputations = 10, maxit = 5, G = 1:9) {
   require(mclust)
   require(condMVNorm)
   require(tidyverse)
+  require(nnet)
+  #outcome of function
+  output <- NULL
+  parameter <- NULL
+  imp <- NULL
+  iter_values_mean <- NULL
+  iter_values_sd <- NULL
+  
+  output$original <- dataset        #record original dataset
   
   #position of missing data
   data.missing <- is.na(dataset)
   data.present <- !is.na(dataset)
   
-  
-  
-  
   # replace values with observed values
-  start.model <- mclustBIC(dataset[complete.cases(dataset),], G = G)
-  missing.values <- sim(model.mclust$modelName, model.mclust$parameters, nrow(dataset))
+  start.model <- Mclust(dataset[complete.cases(dataset),], G = G)   #initial model
+  missing.values <- sim(start.model$modelName, start.model$parameters, nrow(dataset))    #simulate values, same size of original
   for (variable in 1:ncol(dataset)) {
-    missing <- which(data.missing[,variable])
+    missing <- which(data.missing[,variable])    #where are the missing values per variable
     
     for (row in missing) {
-      dataset[row,variable] <- missing.values[row,variable+1]
+      dataset[row,variable] <- missing.values[row,variable+1]   #place simulated in empty space
     }
-    
-    
   }
-  
-  
-  
   # # function for any number of variables to fill with mean
   # for (variable in 1:ncol(dataset)) {
   #   dataset[,variable] = ifelse(is.na(dataset[,variable]),
@@ -33,223 +33,74 @@ mclust_version1 <- function(dataset, imputations = 10, maxit = 5, G = 1:9, save_
   #                                 dataset[,variable])
   # }
   
-  
-  #outcome of function
-  output <- NULL
-  parameter <- NULL
-  imp <- NULL
-  
-  
   for (cycle in 1: imputations) {
     
-    imputing <- datasetmclust_version1 <- function(dataset, imputations = 10, maxit = 5, G = 1:9, save_parameter = FALSE) {
-  
-  require(mclust)
-  require(condMVNorm)
-  require(tidyverse)
-  
-  #position of missing data
-  data.missing <- is.na(dataset)
-  data.present <- !is.na(dataset)
-  
-  
-  
-  
-  # replace values with observed values
-  start.model <- Mclust(dataset[complete.cases(dataset),], G = G)
-  missing.values <- sim(start.model$modelName, start.model$parameters, nrow(dataset))
-  for (variable in 1:ncol(dataset)) {
-    missing <- which(data.missing[,variable])
+    mean <- NULL
+    sd <- NULL
     
-    for (row in missing) {
-      dataset[row,variable] <- missing.values[row,variable+1]
-    }
+    imputing <- dataset      #dataset being used for this cycle
     
-    
-  }
-  
-  
-  
-  # # function for any number of variables to fill with mean
-  # for (variable in 1:ncol(dataset)) {
-  #   dataset[,variable] = ifelse(is.na(dataset[,variable]),
-  #                                 ave(dataset[,variable], FUN = function(x) mean(x, na.rm = TRUE)),
-  #                                 dataset[,variable])
-  # }
-  
-  
-  #outcome of function
-  output <- NULL
-  parameter <- NULL
-  imp <- NULL
-  
-  
-  for (cycle in 1: imputations) {
-    
-    imputing <- dataset
-    
-    for (iteration in 1:maxit) {
-      
+    for (iteration in 1:maxit) {    #reuse of the same dataset
       
       for (variable in 1:ncol(dataset)) {
+        model.mclust <- Mclust(dataset, G = G)        #run model for that variable
         
-        
-        # run best BIC model
-        model.mclust <- Mclust(dataset, G = G)
-        
-        
-        #save parameter
-        if (save_parameter == TRUE) {
-          value <- cbind(Parameter = model.mclust$G, Variable = variable, Iteration = iteration, Imputation = cycle)
-          parameter <- rbind(parameter, value)
-        }
-        
-        
+        value <- cbind(Parameter = model.mclust$G, Variable = variable, Iteration = iteration, Imputation = cycle)
+        parameter <- rbind(parameter, value)      # save the number of components used in Mclust
         # collect sigma and mu from mclust
         sigma <- model.mclust$parameters$variance$sigma
         mu <- model.mclust$parameters$mean
         
-        
-        #position of missing data
-        position <- which(data.missing[,variable])
+        position <- which(data.missing[,variable])       # position of missing in the variable
         
         for (row in position) {
-          
-          
-          draw <- sample(1:model.mclust$G,1,replace = FALSE,prob = model.mclust$parameters$pro)
-          # random draw of sigma
-          var <- sigma[,,draw]
-          #random draw of mu
-          mu.it <- mu[,draw]
-          #variable being imputed now
-          dependent <- variable
-          #position of given variables
-          given <- which(data.present[row,])
-          #values of given variables
-          x.given <- as.numeric(dataset[row,given])
-          
-          
+          draw <- which.is.max(rmultinom(n=1, size=1, prob=model.mclust$parameters$pro))       #parameter draw from multinomial
           # conditional mean/variance 
-          test <- condMVN(mean=mu.it, sigma=var, dependent=dependent, given=given,
-                          X.given=x.given, check.sigma = FALSE)
-          
-          imputing[row,variable] <- rnorm(1,test$condMean, test$condVar)
+          given <- which(data.present[row,])
+          test <- condMVN(mean=mu[,draw],
+                          sigma=sigma[,,draw],
+                          dependent=variable,
+                          given=which(data.present[row,]),
+                          X.given=as.numeric(dataset[row,given]),
+                          check.sigma = FALSE)
+          imputing[row,variable] <- rnorm(1,test$condMean, test$condVar)        #replace values with conditional draw
         }
-        
       }
       
+      for (variable in ncol(dataset):1) {        #save mean and sd per variable per iteration
+        mean[[variable]] <- cbind(mean[[variable]], mean(imputing[,variable]))
+        sd[[variable]] <- cbind(sd[[variable]], sd(imputing[,variable]))
+      }
     }
     
-    imputing <- imputing %>%
-      mutate(Imputation = cycle)
+    for (variable in ncol(dataset):1) {     #combine all means and sd from all cycles
+      iter_values_mean[[variable]] <- rbind(iter_values_mean[[variable]], mean[[variable]])
+      iter_values_sd[[variable]] <- rbind(iter_values_sd[[variable]], sd[[variable]])
+    }
     
-    output$dataset <- rbind(output$dataset, imputing)
+    output$dataset[[cycle]] <- imputing
     
-    
-    #value with only missing data
-    for (variable in ncol(dataset):1) {
-      
+    for (variable in ncol(dataset):1) {       #collect only the final imputed values
       values <- imputing[,variable]
       values[!data.missing] <- NA
-      values <- values[complete.cases(values)]
-      
-      # names <- colnames(dataset)[variable]
-      
-      imp[[variable]] <- cbind(imp[[variable]], values)
+      imp[[variable]] <- cbind(imp[[variable]], values[complete.cases(values)])
     }
-    
-    
-    
   }
   
+  for (variable  in 1:ncol(dataset)) {           #allow the "imp" to be understood better with actual name
+    colnames(imp[[variable]]) <- rep(colnames(dataset)[variable], imputations)
+    colnames(iter_values_mean[[variable]]) <- rep(colnames(dataset)[variable], maxit)
+    colnames(iter_values_sd[[variable]]) <- rep(colnames(dataset)[variable], maxit)
+  }
+  # combine all output elements
   output$iteration <- maxit
   output$imputation <- imputations
+  output$G <- G
   output$imp <- imp
   output$parameter <- as.data.frame(parameter)
   output$missing <- data.missing
-  return(output)
+  output$iter_mean <- iter_values_mean
+  output$iter_sd <- iter_values_sd
   #End of Function
-}
-    
-    for (iteration in 1:maxit) {
-      
-      
-      for (variable in 1:ncol(dataset)) {
-        
-        
-        # run best BIC model
-        model.mclust <- Mclust(dataset, G = G)
-        
-        
-        #save parameter
-        if (save_parameter == TRUE) {
-          value <- cbind(Parameter = model.mclust$G, Variable = variable, Iteration = iteration, Imputation = cycle)
-          parameter <- rbind(parameter, value)
-        }
-        
-        
-        # collect sigma and mu from mclust
-        sigma <- model.mclust$parameters$variance$sigma
-        mu <- model.mclust$parameters$mean
-        
-        
-        #position of missing data
-        position <- which(data.missing[,variable])
-        
-        for (row in position) {
-          
-          
-          draw <- sample(1:model.mclust$G,1,replace = FALSE,prob = model.mclust$parameters$pro)
-          # random draw of sigma
-          var <- sigma[,,draw]
-          #random draw of mu
-          mu.it <- mu[,draw]
-          #variable being imputed now
-          dependent <- variable
-          #position of given variables
-          given <- which(data.present[row,])
-          #values of given variables
-          x.given <- as.numeric(dataset[row,given])
-          
-          
-          # conditional mean/variance 
-          test <- condMVN(mean=mu.it, sigma=var, dependent=dependent, given=given,
-                          X.given=x.given, check.sigma = FALSE)
-          
-          imputing[row,variable] <- rnorm(1,test$condMean, test$condVar)
-        }
-        
-      }
-      
-    }
-    
-    imputing <- imputing %>%
-      mutate(Imputation = cycle)
-    
-    output$dataset <- rbind(output$dataset, imputing)
-    
-    
-    #value with only missing data
-    for (variable in ncol(dataset):1) {
-      
-      values <- imputing[,variable]
-      values[!data.missing] <- NA
-      values <- values[complete.cases(values)]
-      
-      # names <- colnames(dataset)[variable]
-      
-      imp[[variable]] <- cbind(imp[[variable]], values)
-    }
-    
-    
-    
-  }
-  
-  output$iteration <- maxit
-  output$imputation <- imputations
-  output$imp <- imp
-  output$parameter <- as.data.frame(parameter)
-  output$missing <- data.missing
   return(output)
-  #End of Function
 }
