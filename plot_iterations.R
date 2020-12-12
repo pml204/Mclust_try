@@ -1,4 +1,4 @@
-plot_iterations <- function(dataset) {
+plot_iterations <- function(dataset, save_plot = FALSE) {
   require(ggplot2)
   require(tidyverse)
   #outcome of function
@@ -31,5 +31,7 @@ plot_iterations <- function(dataset) {
       scale_x_continuous(breaks = seq(1, dataset$iteration, by = 1)) +
       ggtitle("Mean and Variance through Imputation Chains")
   print(plot)
-  ggsave("iterations.png", plot = plot, height = 10*ncol(dataset$original), width = 30, units = "cm")
+  if (save_plot == TRUE) {
+    ggsave("iterations.png", plot = plot, height = 10*ncol(dataset$original), width = 30, units = "cm")
+  }
 }

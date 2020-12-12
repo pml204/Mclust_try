@@ -1,4 +1,4 @@
-plot_parameter <- function(dataset, plot_columns = 7) {
+plot_parameter <- function(dataset, plot_columns = 7, save_plot = FALSE) {
   require(ggplot2)
   require(tidyverse)
   parameter <- dataset$parameter %>%
@@ -16,5 +16,7 @@ plot_parameter <- function(dataset, plot_columns = 7) {
     ggtitle("Number of Components Used in mclust")
   print(plot)
   
-  ggsave("parameters.png", plot = plot, height = 20, width = 27, units = "cm")
+  if (save_plot == TRUE) {
+    ggsave("parameters.png", plot = plot, height = 20, width = 27, units = "cm")
+  }
 }

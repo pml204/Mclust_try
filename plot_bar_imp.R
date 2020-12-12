@@ -1,4 +1,4 @@
-plot_bar_imp <- function(dataset) {
+plot_bar_imp <- function(dataset, save_plot = FALSE) {
   require(tidyverse)
   require(ggplot2)
   #outcome of function
@@ -39,6 +39,8 @@ plot_bar_imp <- function(dataset) {
                   ".png")
     save <- gsub(" ", "", save, fixed = TRUE)
     
-    ggsave(save, plot = plot, height = 20, width = 27, units = "cm")
+    if (save_plot == TRUE) {
+      ggsave(save, plot = plot, height = 20, width = 27, units = "cm")
+    }
   }
 }
