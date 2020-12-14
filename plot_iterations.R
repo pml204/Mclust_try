@@ -1,6 +1,7 @@
 plot_iterations <- function(dataset, save_plot = FALSE) {
   require(ggplot2)
   require(tidyverse)
+  require(reshape2)
   #outcome of function
   grouped_values <- NULL
   plotting.data <- NULL
@@ -24,11 +25,10 @@ plot_iterations <- function(dataset, save_plot = FALSE) {
   names(var.labs) <- rep(1:(ncol(dataset$original)))
   plot <- ggplot(data = plotting.data, aes(x = Iteration , y = value)) +
       geom_line(aes(color = Chain)) +
-      facet_wrap(Variable~Method, scales = "free",
+      facet_wrap(Variable~Method, scales = "free", ncol = 2,
                  labeller = labeller(Variable = var.labs)) +
       ylab(NULL) +
       theme(legend.position = "none") +
-      scale_x_continuous(breaks = seq(1, dataset$iteration, by = 1)) +
       ggtitle("Mean and Variance through Imputation Chains")
   print(plot)
   if (save_plot == TRUE) {

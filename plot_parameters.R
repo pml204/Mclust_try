@@ -12,7 +12,7 @@ plot_parameter <- function(dataset, plot_columns = 7, save_plot = FALSE) {
     facet_wrap(~Variable, ncol = plot_columns,
                labeller = labeller(Variable = Variable.labs)) +
     ylab("Number of Components") +
-    scale_x_continuous(breaks = seq(min(G)-1, max(G)+1, by = 2)) +
+    scale_x_continuous(breaks = seq(min(dataset$G)-1, max(dataset$G)+1, by = 2)) +
     ggtitle("Number of Components Used in mclust")
   print(plot)
   
