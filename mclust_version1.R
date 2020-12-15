@@ -1,3 +1,15 @@
+## calculates log of the marginal likelihood using log-sum-exp trick
+## function to perform log-sum-exp trick
+log_sum_exp <- function(lx) {
+  
+  ## extract maximum of logged values
+  mX <- max(lx)
+  
+  ## return answer
+  out <- mX + log(sum(exp(lx - mX)))
+  out
+}
+
 mclust_version1 <- function(dataset, imputations = 10, maxit = 5, G = 1:9) {
   require(mclust)
   require(condMVNorm)
@@ -21,10 +33,7 @@ mclust_version1 <- function(dataset, imputations = 10, maxit = 5, G = 1:9) {
   missing.values <- sim(start.model$modelName, start.model$parameters, nrow(dataset))    #simulate values, same size of original
   for (variable in 1:ncol(dataset)) {
     missing <- which(data.missing[,variable])    #where are the missing values per variable
-    
-    for (row in missing) {
-      dataset[row,variable] <- missing.values[row,variable+1]   #place simulated in empty space
-    }
+    dataset[missing,variable] <- missing.values[missing,variable+1]   #place simulated in empty space
   }
   # # function for any number of variables to fill with mean
   # for (variable in 1:ncol(dataset)) {
@@ -47,25 +56,48 @@ mclust_version1 <- function(dataset, imputations = 10, maxit = 5, G = 1:9) {
         
         value <- cbind(Parameter = model.mclust$G, Variable = variable, Iteration = iteration, Imputation = cycle)
         parameter <- rbind(parameter, value)      # save the number of components used in Mclust
+        
         # collect sigma and mu from mclust
         sigma <- model.mclust$parameters$variance$sigma
         mu <- model.mclust$parameters$mean
+        pro <- model.mclust$parameters$pro
         
-        position <- which(data.missing[,variable])       # position of missing in the variable
+        # positions of missing values
+        position <- which(data.missing[, variable])
+        
+        ## marginal for known
+        marg_mean <- mu[-variable, , drop = FALSE]
+        marg_sigma <- sigma[-variable, -variable, , drop = FALSE]
         
         for (row in position) {
-          draw <- which.is.max(rmultinom(n=1, size=1, prob=model.mclust$parameters$pro))       #parameter draw from multinomial
-          # conditional mean/variance 
-          given <- which(data.present[row,])
+          ## log-marginal for each component
+          lmarg <- map_dbl(1:length(pro), function(i, x, pro, mu, sigma) {
+              mclust::dmvnorm(x, mu[, i], sigma[, , i], log = TRUE) + log(pro[i])
+          }, x = dataset[row, -variable], pro = pro, mu = marg_mean, sigma = marg_sigma)
+          ## log-marginal
+          lmarg <- log_sum_exp(lmarg)
+          
+          ## conditional for x2 for all components
+          z_given_x_l <- map_dbl(1:length(pro), function(i, x, pro, mu, sigma, denom) {
+              mclust::dmvnorm(x, mu[, i], sigma[, , i], log = TRUE) + log(pro[i]) - denom
+          }, x = dataset[row, -variable], pro = pro, mu = marg_mean, sigma = marg_sigma, denom = lmarg)
+          z_given_x <- exp(z_given_x_l)
+          stopifnot(all.equal(sum(z_given_x), 1))
+          
+          draw <- which.is.max(rmultinom(n=1, size=1, prob=z_given_x))       #parameter draw from multinomial
+          # conditional mean/variance
           test <- condMVN(mean=mu[,draw],
                           sigma=sigma[,,draw],
-                          dependent=variable,
-                          given=which(data.present[row,]),
-                          X.given=as.numeric(dataset[row,given]),
+                          dependent.ind=variable,
+                          given.ind=(1:ncol(dataset))[-variable],
+                          X.given=dataset[row, -variable],
                           check.sigma = FALSE)
-          imputing[row,variable] <- rnorm(1,test$condMean, test$condVar)        #replace values with conditional draw
+          imputing[row, variable] <- rnorm(1,test$condMean, test$condVar)        #replace values with conditional draw
         }
       }
+      
+      
+      GOT TO HERE
       
       for (variable in ncol(dataset):1) {        #save mean and sd per variable per iteration
         mean[[variable]] <- cbind(mean[[variable]], mean(imputing[,variable]))
