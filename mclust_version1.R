@@ -100,8 +100,8 @@ mclust_version1 <- function(dataset, imputations = 10, maxit = 5, G = 1:9) {
       GOT TO HERE
       
       for (variable in ncol(dataset):1) {        #save mean and sd per variable per iteration
-        mean[[variable]] <- cbind(mean[[variable]], mean(imputing[,variable]))
-        sd[[variable]] <- cbind(sd[[variable]], sd(imputing[,variable]))
+        mean[[variable]] <- append(mean[[variable]], mean(imputing[,variable]))
+        sd[[variable]] <- append(sd[[variable]], sd(imputing[,variable]))
       }
     }
     
