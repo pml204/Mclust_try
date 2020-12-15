@@ -90,7 +90,7 @@ mclust_version1 <- function(dataset, imputations = 10, maxit = 5, G = 1:9) {
                           sigma=sigma[,,draw],
                           dependent.ind=variable,
                           given.ind=(1:ncol(dataset))[-variable],
-                          X.given=dataset[row, -variable],
+                          X.given=as.numeric(dataset[row, -variable]),
                           check.sigma = FALSE)
           imputing[row, variable] <- rnorm(1,test$condMean, test$condVar)        #replace values with conditional draw
         }
