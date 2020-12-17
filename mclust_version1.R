@@ -72,14 +72,14 @@ mclust_version1 <- function(dataset, imputations = 10, maxit = 5, G = 1:9) {
         for (row in position) {
           ## log-marginal for each component
           lmarg <- map_dbl(1:length(pro), function(i, x, pro, mu, sigma) {
-              mclust::dmvnorm(x, mu[, i], sigma[, , i], log = TRUE) + log(pro[i])
+            mclust::dmvnorm(x, mu[, i], sigma[, , i], log = TRUE) + log(pro[i])
           }, x = dataset[row, -variable], pro = pro, mu = marg_mean, sigma = marg_sigma)
           ## log-marginal
           lmarg <- log_sum_exp(lmarg)
           
           ## conditional for x2 for all components
           z_given_x_l <- map_dbl(1:length(pro), function(i, x, pro, mu, sigma, denom) {
-              mclust::dmvnorm(x, mu[, i], sigma[, , i], log = TRUE) + log(pro[i]) - denom
+            mclust::dmvnorm(x, mu[, i], sigma[, , i], log = TRUE) + log(pro[i]) - denom
           }, x = dataset[row, -variable], pro = pro, mu = marg_mean, sigma = marg_sigma, denom = lmarg)
           z_given_x <- exp(z_given_x_l)
           stopifnot(all.equal(sum(z_given_x), 1))
@@ -96,8 +96,6 @@ mclust_version1 <- function(dataset, imputations = 10, maxit = 5, G = 1:9) {
         }
       }
       
-      
-      GOT TO HERE
       
       for (variable in ncol(dataset):1) {        #save mean and sd per variable per iteration
         mean[[variable]] <- append(mean[[variable]], mean(imputing[,variable]))
