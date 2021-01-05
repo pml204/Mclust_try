@@ -22,6 +22,11 @@ mclust_version1 <- function(dataset, imputations = 10, maxit = 5, G = 1:9) {
   iter_values_mean <- NULL
   iter_values_sd <- NULL
   
+  for (variable in ncol(dataset):1) {
+    iter_values_mean[[variable]] <- matrix(0, imputations, maxit)
+    iter_values_sd[[variable]] <- matrix(0, imputations, maxit)
+  }
+  
   output$original <- dataset        #record original dataset
   
   #position of missing data
@@ -44,8 +49,9 @@ mclust_version1 <- function(dataset, imputations = 10, maxit = 5, G = 1:9) {
   
   for (cycle in 1: imputations) {
     
-    mean <- NULL
-    sd <- NULL
+    # a matrix of columns = iterations, rows = variables
+    mean <- matrix(0,ncol(dataset),maxit)
+    sd <- matrix(0,ncol(dataset),maxit)
     
     imputing <- dataset      #dataset being used for this cycle
     
@@ -73,14 +79,14 @@ mclust_version1 <- function(dataset, imputations = 10, maxit = 5, G = 1:9) {
           ## log-marginal for each component
           lmarg <- map_dbl(1:length(pro), function(i, x, pro, mu, sigma) {
             mclust::dmvnorm(x, mu[, i], sigma[, , i], log = TRUE) + log(pro[i])
-          }, x = dataset[row, -variable], pro = pro, mu = marg_mean, sigma = marg_sigma)
+          }, x = imputing[row, -variable], pro = pro, mu = marg_mean, sigma = marg_sigma)
           ## log-marginal
           lmarg <- log_sum_exp(lmarg)
           
           ## conditional for x2 for all components
           z_given_x_l <- map_dbl(1:length(pro), function(i, x, pro, mu, sigma, denom) {
             mclust::dmvnorm(x, mu[, i], sigma[, , i], log = TRUE) + log(pro[i]) - denom
-          }, x = dataset[row, -variable], pro = pro, mu = marg_mean, sigma = marg_sigma, denom = lmarg)
+          }, x = imputing[row, -variable], pro = pro, mu = marg_mean, sigma = marg_sigma, denom = lmarg)
           z_given_x <- exp(z_given_x_l)
           stopifnot(all.equal(sum(z_given_x), 1))
           
@@ -93,22 +99,23 @@ mclust_version1 <- function(dataset, imputations = 10, maxit = 5, G = 1:9) {
                           X.given=as.numeric(dataset[row, -variable]),
                           check.sigma = FALSE)
           imputing[row, variable] <- rnorm(1,test$condMean, test$condVar)        #replace values with conditional draw
-        }
+        
+          }
       }
       
       
       for (variable in ncol(dataset):1) {        #save mean and sd per variable per iteration
-        mean[[variable]] <- append(mean[[variable]], mean(imputing[,variable]))
-        sd[[variable]] <- append(sd[[variable]], sd(imputing[,variable]))
+        mean[variable, iteration] <- mean(imputing[,variable])
+        sd[variable, iteration] <- sd(imputing[,variable])
       }
     }
     
     for (variable in ncol(dataset):1) {     #combine all means and sd from all cycles
-      iter_values_mean[[variable]] <- rbind(iter_values_mean[[variable]], mean[[variable]])
-      iter_values_sd[[variable]] <- rbind(iter_values_sd[[variable]], sd[[variable]])
+      iter_values_mean[[variable]][cycle,] <- mean[variable,]
+      iter_values_sd[[variable]][cycle,] <- sd[variable,]
     }
     
-    output$dataset[[cycle]] <- imputing
+    #output$dataset[[cycle]] <- imputing
     
     for (variable in ncol(dataset):1) {       #collect only the final imputed values
       values <- imputing[,variable]
@@ -131,6 +138,7 @@ mclust_version1 <- function(dataset, imputations = 10, maxit = 5, G = 1:9) {
   output$missing <- data.missing
   output$iter_mean <- iter_values_mean
   output$iter_sd <- iter_values_sd
+  output$mclust <- model.mclust
   #End of Function
   return(output)
 }
