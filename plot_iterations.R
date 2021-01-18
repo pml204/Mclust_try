@@ -2,6 +2,7 @@ plot_iterations <- function(dataset, save_plot = FALSE) {
   require(ggplot2)
   require(tidyverse)
   require(reshape2)
+  require(ggforce)
   #outcome of function
   grouped_values <- NULL
   plotting.data <- NULL
@@ -23,15 +24,51 @@ plot_iterations <- function(dataset, save_plot = FALSE) {
   colnames(plotting.data)[3] <- "Method"
   var.labs <- colnames(dataset$original)
   names(var.labs) <- rep(1:(ncol(dataset$original)))
-  plot <- ggplot(data = plotting.data, aes(x = Iteration , y = value)) +
-      geom_line(aes(color = Chain)) +
-      facet_wrap(Variable~Method, scales = "free", ncol = 2,
-                 labeller = labeller(Variable = var.labs)) +
-      ylab(NULL) +
-      theme(legend.position = "none") +
-      ggtitle("Mean and Variance through Imputation Chains")
-  print(plot)
-  if (save_plot == TRUE) {
-    ggsave("iterations.png", plot = plot, height = 10*ncol(dataset$original), width = 30, units = "cm")
+  if (ncol(dataset$original)%%3 == 0){
+    #for exactly number of plots multiple of 3
+    for (i in seq(1:(ncol(dataset$original)%/%3))) {
+      plot <- ggplot(data = plotting.data, aes(x = Iteration , y = value)) +
+        geom_line(aes(color = Chain)) +
+        facet_wrap_paginate(Variable~Method, scales = "free", ncol = 2, nrow = 3, page = i,
+                            labeller = labeller(Variable = var.labs)) +
+        ylab(NULL) +
+        #theme(legend.position = "none") +
+        ggtitle("Mean and Variance through Imputation Chains")
+      print(plot)
+      if (save_plot == TRUE) {
+        title <- paste("iterations",i,".png", sep = "")
+        ggsave(title, plot = plot, height = 30, width = 30, units = "cm")
+      }
+    }
+  } else {
+    for (i in seq(1:((ncol(dataset$original)%/%3)+1))) {
+      if (i == tail(seq(1:((ncol(dataset$original)%/%3)+1)), n=1)) {
+        plot <- ggplot(data = plotting.data, aes(x = Iteration , y = value)) +
+          geom_line(aes(color = Chain)) +
+          facet_wrap_paginate(Variable~Method, scales = "free", ncol = 2, nrow = (ncol(dataset$original)%%3), page = i,
+                              labeller = labeller(Variable = var.labs)) +
+          ylab(NULL) +
+          #theme(legend.position = "none") +
+          ggtitle("Mean and Variance through Imputation Chains")
+        print(plot)
+        if (save_plot == TRUE) {
+          title <- paste("iterations",i,".png", sep = "")
+          ggsave(title, plot = plot, height = 10*(ncol(dataset$original)%%3), width = 30, units = "cm")
+        }
+      } else {
+        plot <- ggplot(data = plotting.data, aes(x = Iteration , y = value)) +
+          geom_line(aes(color = Chain)) +
+          facet_wrap_paginate(Variable~Method, scales = "free", ncol = 2, nrow = 3, page = i,
+                              labeller = labeller(Variable = var.labs)) +
+          ylab(NULL) +
+          #theme(legend.position = "none") +
+          ggtitle("Mean and Variance through Imputation Chains")
+        print(plot)
+        if (save_plot == TRUE) {
+          title <- paste("iterations",i,".png", sep = "")
+          ggsave(title, plot = plot, height = 30, width = 30, units = "cm")
+        }
+      }
+    }
   }
 }

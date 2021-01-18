@@ -23,6 +23,10 @@ plot_matrix <- function(dataset, save_plot = FALSE, imputations = NULL) {
         
         plot <- ggplot(test, aes(x = var1, y = var2)) +
           geom_point(aes(color = Class), shape = 4, size = 1)
+        # for contour plot
+        # plot <- ggplot(test, aes(x = var1, y = var2)) +
+        #   #geom_point(shape = 4, size = 1) ++
+        #   geom_density_2d()
         
       } else if (row > column) {      #lower area of the matrix
         if (is.null(imputations)) {
