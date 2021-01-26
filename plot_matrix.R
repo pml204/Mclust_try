@@ -1,4 +1,4 @@
-plot_matrix <- function(dataset, save_plot = FALSE, imputations = NULL) {
+plot_matrix <- function(dataset, print_plot = TRUE, save_plot = FALSE, imputations = NULL) {
   require(tidyverse)
   require(ggplot2)
   require(GGally)
@@ -15,6 +15,20 @@ plot_matrix <- function(dataset, save_plot = FALSE, imputations = NULL) {
     for (column in 1:ncol(dataset$original)) {
       if (row < column) {        #upper area of the matrix
         
+        ##########################################################################
+        data1 <- data.frame(a = dataset$original[complete.cases(dataset$original),c(row,column)]) %>%
+          cbind(Status="Original")
+        colnames(data1) <- c("var1","var2","Status")
+        data2 <- data.frame(var1 = unlist(data.frame(dataset$imp[[row]][,imputations])),
+                            var2 = unlist(data.frame(dataset$imp[[column]][,imputations]))) %>%
+          cbind(Status="Imputed")
+        colnames(data1) <- c("var1","var2","Status")
+        viz <- rbind(data1,data2) %>%
+          mutate(Status = factor(Status))
+        
+        ##########################################################################
+        # browser()
+        
         test <- dataset$mclust$data[,c(row,column)] %>%
           cbind(Class = dataset$mclust$classification)
         colnames(test) <- c("var1","var2","Class")
@@ -22,7 +36,10 @@ plot_matrix <- function(dataset, save_plot = FALSE, imputations = NULL) {
           mutate(Class = factor(Class))
         
         plot <- ggplot(test, aes(x = var1, y = var2)) +
-          geom_point(aes(color = Class), shape = 4, size = 1)
+          geom_point(aes(color = Class), shape = 4, size = 1) +
+          xlim(min(viz$var1), max(viz$var1)) +
+          ylim(min(viz$var2), max(viz$var2))
+          
         # for contour plot
         # plot <- ggplot(test, aes(x = var1, y = var2)) +
         #   #geom_point(shape = 4, size = 1) ++
@@ -70,7 +87,9 @@ plot_matrix <- function(dataset, save_plot = FALSE, imputations = NULL) {
            legend = 1) +
     theme(legend.position = "bottom")
   
-  print(final)
+  if (print_plot == TRUE) {
+    print(final)
+  }
   
   if (save_plot == TRUE) {
     ggsave("matrix.png", plot = final, height = 20, width = 27, units = "cm")

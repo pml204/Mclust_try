@@ -1,4 +1,4 @@
-plot_bar_imp <- function(dataset, save_plot = FALSE) {
+plot_bar_imp <- function(dataset, print_plot = TRUE, save_plot = FALSE) {
   require(tidyverse)
   require(ggplot2)
   #outcome of function
@@ -32,7 +32,9 @@ plot_bar_imp <- function(dataset, save_plot = FALSE) {
       theme(axis.text.x = element_text(angle = 90)) +
       ggtitle(title)
     
-    print(plot)
+    if (print_plot == TRUE) {
+      print(plot)
+    }
     
     save <- paste("box_",
                    colnames(dataset$original)[variable],
