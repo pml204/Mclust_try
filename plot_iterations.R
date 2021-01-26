@@ -1,4 +1,4 @@
-plot_iterations <- function(dataset, save_plot = FALSE) {
+plot_iterations <- function(dataset, print_plot = TRUE, save_plot = FALSE) {
   require(ggplot2)
   require(tidyverse)
   require(reshape2)
@@ -34,7 +34,9 @@ plot_iterations <- function(dataset, save_plot = FALSE) {
         ylab(NULL) +
         #theme(legend.position = "none") +
         ggtitle("Mean and Variance through Imputation Chains")
-      print(plot)
+      if (print_plot == TRUE) {
+        print(plot)
+      }
       if (save_plot == TRUE) {
         title <- paste("iterations",i,".png", sep = "")
         ggsave(title, plot = plot, height = 30, width = 30, units = "cm")
@@ -50,7 +52,9 @@ plot_iterations <- function(dataset, save_plot = FALSE) {
           ylab(NULL) +
           #theme(legend.position = "none") +
           ggtitle("Mean and Variance through Imputation Chains")
-        print(plot)
+        if (print_plot == TRUE) {
+          print(plot)
+        }
         if (save_plot == TRUE) {
           title <- paste("iterations",i,".png", sep = "")
           ggsave(title, plot = plot, height = 10*(ncol(dataset$original)%%3), width = 30, units = "cm")
@@ -63,7 +67,9 @@ plot_iterations <- function(dataset, save_plot = FALSE) {
           ylab(NULL) +
           #theme(legend.position = "none") +
           ggtitle("Mean and Variance through Imputation Chains")
-        print(plot)
+        if (print_plot == TRUE) {
+          print(plot)
+        }
         if (save_plot == TRUE) {
           title <- paste("iterations",i,".png", sep = "")
           ggsave(title, plot = plot, height = 30, width = 30, units = "cm")

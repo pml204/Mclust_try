@@ -1,4 +1,4 @@
-plot_parameter <- function(dataset, plot_columns = 7, save_plot = FALSE) {
+plot_parameter <- function(dataset, plot_columns = 7, print_plot = TRUE, save_plot = FALSE) {
   require(ggplot2)
   require(tidyverse)
   
@@ -22,8 +22,9 @@ plot_parameter <- function(dataset, plot_columns = 7, save_plot = FALSE) {
       ylab("Number of Components") +
       #scale_x_continuous(breaks = seq(min(dataset$iteration)-1, max(dataset$iteration)+1, by = 2)) +
       ggtitle("Number of Components Used in mclust")
-    print(plot)
-    
+    if (print_plot == TRUE) {
+      print(plot)
+    }    
     
     
     
@@ -42,8 +43,9 @@ plot_parameter <- function(dataset, plot_columns = 7, save_plot = FALSE) {
       ylab("Number of Components") +
       #scale_x_continuous(breaks = seq(min(dataset$iteration)-1, max(dataset$iteration)+1, by = 2)) +
       ggtitle("Number of Components Used in mclust")
-    print(plot)
-    
+    if (print_plot == TRUE) {
+      print(plot)
+    }    
     
   }
   

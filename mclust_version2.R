@@ -10,12 +10,20 @@ log_sum_exp <- function(lx) {
   out
 }
 
-mclust_version2 <- function(dataset, imputations = 10, maxit = 5, G = 1:9) {
+mclust_version2 <- function(dataset, imputations = 10, maxit = 5, G = 1:9, diagnosis_plots = FALSE, seed = NULL) {
+  require(GGally)
   require(mclust)
   require(condMVNorm)
   require(tidyverse)
   require(nnet)
   require(MASS)
+  # setting seed
+  if (is.null(seed)) {
+    seed <- sample(1:999999, 1)
+    set.seed(seed)
+  } else {
+    set.seed(seed)
+  }
   #outcome of function
   output <- NULL
   parameter <- NULL
@@ -24,8 +32,8 @@ mclust_version2 <- function(dataset, imputations = 10, maxit = 5, G = 1:9) {
   iter_values_sd <- NULL
   
   for (variable in ncol(dataset):1) {
-    iter_values_mean[[variable]] <- matrix(0, imputations, maxit)
-    iter_values_sd[[variable]] <- matrix(0, imputations, maxit)
+    iter_values_mean[[variable]] <- matrix(NA, imputations, maxit)
+    iter_values_sd[[variable]] <- matrix(NA, imputations, maxit)
   }
   
   output$original <- dataset        #record original dataset
@@ -48,83 +56,110 @@ mclust_version2 <- function(dataset, imputations = 10, maxit = 5, G = 1:9) {
   #                                 dataset[,variable])
   # }
   
+  #directory for plots
+  if (diagnosis_plots == TRUE) {
+    dir.create(as.character(seed))
+  }
+  
   
   for (cycle in 1: imputations) {
     
     # a matrix of columns = iterations, rows = variables
-    mean <- matrix(0,ncol(dataset),maxit)
-    sd <- matrix(0,ncol(dataset),maxit)
+    mean <- matrix(NA,ncol(dataset),maxit)
+    sd <- matrix(NA,ncol(dataset),maxit)
     
     current.imputing <- dataset      #dataset being used for this cycle
     
-    for (iteration in 1:maxit) {
+    #some diagnosis plots through each iteration
+    if (diagnosis_plots == TRUE) {
+      title <- paste("iteration_",cycle,"_0.png", sep = "")
+      ggsave(path = as.character(seed), filename = title, plot = ggpairs(current.imputing), height = 20, width = 27, units = "cm")
+    } 
+    
+    tryCatch({
       
-      model.mclust <- Mclust(current.imputing, G = G)        #run model for that iteration
-      
-      value <- cbind(Parameter = model.mclust$G, Iteration = iteration, Imputation = cycle)
-      parameter <- rbind(parameter, value)      # save the number of components used in Mclust
-      
-      # collect sigma and mu from mclust
-      sigma <- model.mclust$parameters$variance$sigma
-      mu <- model.mclust$parameters$mean
-      pro <- model.mclust$parameters$pro
-      
-      # rows with missing values
-      x <- rownames(output$original[!complete.cases(output$original), ])
-      
-      for (row in x) {
+      for (iteration in 1:maxit) {
         
-        # positions of missing values
-        variable <- which(data.missing[row,])
+        model.mclust <- Mclust(current.imputing, G = G)        #run model for that iteration
         
-        #check if all variables are missing or not(conditional draw)
-        if (length(variable) != ncol(dataset)) {
+        
+        
+        
+        value <- cbind(Parameter = model.mclust$G, Iteration = iteration, Imputation = cycle)
+        parameter <- rbind(parameter, value)      # save the number of components used in Mclust
+        
+        # collect sigma and mu from mclust
+        sigma <- model.mclust$parameters$variance$sigma
+        mu <- model.mclust$parameters$mean
+        pro <- model.mclust$parameters$pro
+        
+        # rows with missing values
+        x <- rownames(output$original[!complete.cases(output$original), ])
+        
+        for (row in x) {
           
-          ## marginal for known
-          marg_mean <- mu[-variable, , drop = FALSE]
-          marg_sigma <- sigma[-variable, -variable, , drop = FALSE]
+          # positions of missing values
+          variable <- which(data.missing[row,])
           
-          ## log-marginal for each component
-          lmarg <- map_dbl(1:length(pro), function(i, x, pro, mu, sigma) {
-            mclust::dmvnorm(x, mu[, i], sigma[, , i], log = TRUE) + log(pro[i])
-          }, x = current.imputing[row, -variable], pro = pro, mu = marg_mean, sigma = marg_sigma)
-          ## log-marginal
-          lmarg <- log_sum_exp(lmarg)
+          #check if all variables are missing or not(conditional draw)
+          if (length(variable) != ncol(dataset)) {
+            
+            ## marginal for known
+            marg_mean <- mu[-variable, , drop = FALSE]
+            marg_sigma <- sigma[-variable, -variable, , drop = FALSE]
+            
+            ## log-marginal for each component
+            lmarg <- map_dbl(1:length(pro), function(i, x, pro, mu, sigma) {
+              mclust::dmvnorm(x, mu[, i], sigma[, , i], log = TRUE) + log(pro[i])
+            }, x = current.imputing[row, -variable], pro = pro, mu = marg_mean, sigma = marg_sigma)
+            ## log-marginal
+            lmarg <- log_sum_exp(lmarg)
+            
+            ## conditional for x2 for all components
+            z_given_x_l <- map_dbl(1:length(pro), function(i, x, pro, mu, sigma, denom) {
+              mclust::dmvnorm(x, mu[, i], sigma[, , i], log = TRUE) + log(pro[i]) - denom
+            }, x = current.imputing[row, -variable], pro = pro, mu = marg_mean, sigma = marg_sigma, denom = lmarg)
+            z_given_x <- exp(z_given_x_l)
+            stopifnot(all.equal(sum(z_given_x), 1))
+            
+          } else{
+            
+            z_given_x <- pro               #if all variable on row are missing, draw randomly
+            
+          }
           
-          ## conditional for x2 for all components
-          z_given_x_l <- map_dbl(1:length(pro), function(i, x, pro, mu, sigma, denom) {
-            mclust::dmvnorm(x, mu[, i], sigma[, , i], log = TRUE) + log(pro[i]) - denom
-          }, x = current.imputing[row, -variable], pro = pro, mu = marg_mean, sigma = marg_sigma, denom = lmarg)
-          z_given_x <- exp(z_given_x_l)
-          stopifnot(all.equal(sum(z_given_x), 1))
           
-        } else{
+          draw <- which.is.max(rmultinom(n=1, size=1, prob=z_given_x))       #parameter draw from multinomial
           
-          z_given_x <- pro               #if all variable on row are missing, draw randomly
+          # conditional mean/variance
           
+          test <- condMVN(mean=mu[,draw],
+                          sigma=sigma[,,draw],
+                          dependent.ind=variable,
+                          given.ind=(1:ncol(dataset))[-variable],
+                          X.given=as.numeric(dataset[row, -variable]),
+                          check.sigma = FALSE)
+          current.imputing[row, variable] <- mvrnorm(1, test$condMean,test$condVar)        #replace values with conditional draw
+          #print(mvrnorm(1, test$condMean,test$condVar))
+         ################### check what comes out when two values are being imputed
         }
         
-        draw <- which.is.max(rmultinom(n=1, size=1, prob=z_given_x))       #parameter draw from multinomial
+        for (variable in ncol(dataset):1) {        #save mean and sd per variable per iteration
+          mean[variable, iteration] <- mean(current.imputing[,variable])
+          sd[variable, iteration] <- sd(current.imputing[,variable])
+        }
         
-        # conditional mean/variance
+        #some diagnosis plots through each iteration
+        if (diagnosis_plots == TRUE) {
+          title <- paste("iteration_",cycle,"_",iteration,".png", sep = "")
+          ggsave(path = as.character(seed), filename = title, plot = ggpairs(current.imputing), height = 20, width = 27, units = "cm")
+        }
         
-        test <- condMVN(mean=mu[,draw],
-                        sigma=sigma[,,draw],
-                        dependent.ind=variable,
-                        given.ind=(1:ncol(dataset))[-variable],
-                        X.given=as.numeric(dataset[row, -variable]),
-                        check.sigma = FALSE)
-        current.imputing[row, variable] <- mvrnorm(1, test$condMean,test$condVar)        #replace values with conditional draw
-        #print(mvrnorm(1, test$condMean,test$condVar))
-       
+        print(paste("Cycle ", cycle, ", iteration ", iteration, " complete!", sep = ""))        
+        
       }
       
-      for (variable in ncol(dataset):1) {        #save mean and sd per variable per iteration
-        mean[variable, iteration] <- mean(current.imputing[,variable])
-        sd[variable, iteration] <- sd(current.imputing[,variable])
-      }
-      
-    }
+    }, error = function(e){print(paste("Cycle ", cycle, " failed to converge!"))})
     
     for (variable in ncol(dataset):1) {     #combine all means and sd from all cycles
       iter_values_mean[[variable]][cycle,] <- mean[variable,]
@@ -156,6 +191,7 @@ mclust_version2 <- function(dataset, imputations = 10, maxit = 5, G = 1:9) {
   output$iter_mean <- iter_values_mean
   output$iter_sd <- iter_values_sd
   output$mclust <- model.mclust
+  output$seed <- seed
   #End of Function
   return(output)
 }

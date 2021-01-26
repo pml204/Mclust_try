@@ -155,6 +155,7 @@ dataset <- cbind(dataset, Y=y)
 
 
 
+
 # Missing Values
 
 # missing data MCAR
@@ -172,7 +173,6 @@ dataset.missing <- dataset[rows,]
 dataset.missing <- rbind(dataset.missing, dataset[-rows,])
 dataset.missing[!is.na(dataset.mcar.or)] <- NA
 rownames(dataset.missing) <- 1:nrow(dataset.missing)
-
 
 
 #######################################################################
@@ -215,35 +215,32 @@ ggpairs(viz, columns = 1:(ncol(viz)-1),
 # # Imputation
 
 
-# source("functions/mclust_version1.R")
-# source("functions/mclust_version2.R")
-# source("functions/plot_parameters.R")
-# source("functions/plot_bar_imp.R")
-# source("functions/plot_iterations.R")
-# source("functions/plot_matrix.R")
-# source("functions/pool_coefficients.R")
-#imputation
-imput1 <- mclust_version1(dataset.mcar.or, imputations = 3, maxit = 6, G = 2)
-imput2 <- mclust_version2(dataset.mcar.or, imputations = 3, maxit = 6, G = 2)
+source("functions/mclust_version1.R")
+source("functions/mclust_version2.R")
+source("functions/plot_parameters.R")
+source("functions/plot_bar_imp.R")
+source("functions/plot_iterations.R")
+source("functions/plot_matrix.R")
 
-#################
-##############     Add print option, opposite of save maybe?
-#################
+imput1 <- mclust_version1(dataset.mcar.or, imputations = 2, maxit = 10, G = 3, diagnosis_plots = FALSE, seed = 123)
+
+imput2 <- mclust_version2(dataset.mcar.or, imputations = 2, maxit = 2, G = 5, diagnosis_plots = FALSE, seed = NULL)
+
 
 
 # #parameter plot
-# plot_parameter(imput1, save_plot = FALSE)
-# plot_parameter(imput2, save_plot = FALSE)
+plot_parameter(imput1, save_plot = FALSE, print_plot = TRUE)
+# plot_parameter(imput2, save_plot = TRUE, print_plot = TRUE)
 # #boxplot
-# plot_bar_imp(imput1, save_plot = FALSE)
-# plot_bar_imp(imput2, save_plot = FALSE)
+plot_bar_imp(imput1, save_plot = FALSE, print_plot = TRUE)
+# plot_bar_imp(imput2, save_plot = TRUE, print_plot = TRUE)
 # #iterations
-# plot_iterations(imput1, save_plot = FALSE)
-# plot_iterations(imput2, save_plot = FALSE)
+plot_iterations(imput1, save_plot = FALSE, print_plot = TRUE)
+# plot_iterations(imput2, save_plot = TRUE, print_plot = TRUE)
 # #matrix
 # ggpairs(dataset)
-# plot_matrix(imput1, save_plot = FALSE)
-# plot_matrix(imput2, save_plot = FALSE)
+plot_matrix(imput1, save_plot = FALSE, print_plot = TRUE)
+# plot_matrix(imput2, save_plot = TRUE, print_plot = FALSE)
 
 
 
